@@ -1,0 +1,5 @@
+{
+  "name": "Local Video Watermarker",
+  "description": "A pure client-side tool to add PNG watermarks to MP4 videos using ffmpeg.wasm.",
+  "requestFramePermissions": []
+}
