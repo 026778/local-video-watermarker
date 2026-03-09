@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
+    base: '/local-video-watermarker/',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
