@@ -282,6 +282,12 @@ export const getOverlayFilter = (settings: WatermarkSettings, videoWidth: number
     videoSource = '[v0]';
   }
 
+  // Size 0 means no visible watermark; scale=0 would make FFmpeg fail, so pass the video through.
+  if (wWidth < 1) {
+    filterParts.push(`${videoSource}null`);
+    return filterParts.join(';');
+  }
+
   const wmFilters = [
     ...getRotationFilters(watermarkRotation),
     `scale=${wWidth}:-1`,

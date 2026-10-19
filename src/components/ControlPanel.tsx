@@ -123,8 +123,9 @@ export const ControlPanel: React.FC<Props> = ({ settings, onSettingsChange, disa
           </div>
           <input
             type="range"
-            min="5"
-            max="40"
+            min="0"
+            max="100"
+            step="1"
             value={settings.size}
             onChange={(e) => updateSetting('size', parseInt(e.target.value))}
             className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -141,11 +142,11 @@ export const ControlPanel: React.FC<Props> = ({ settings, onSettingsChange, disa
           </div>
           <input
             type="range"
-            min="0.1"
-            max="1"
-            step="0.1"
-            value={settings.opacity}
-            onChange={(e) => updateSetting('opacity', parseFloat(e.target.value))}
+            min="0"
+            max="100"
+            step="1"
+            value={Math.round(settings.opacity * 100)}
+            onChange={(e) => updateSetting('opacity', parseInt(e.target.value) / 100)}
             className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
           />
         </div>

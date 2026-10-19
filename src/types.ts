@@ -7,8 +7,8 @@ export interface WatermarkSettings {
   position: Position;
   manualX: number; // pixels from left
   manualY: number; // pixels from top
-  size: number; // percentage of video width (5-40)
-  opacity: number; // 0.1 - 1
+  size: number; // percentage of video width (0-100)
+  opacity: number; // 0 - 1 (UI shows 0-100)
   margin: number; // pixels (0-500)
   videoRotation: 0 | 90 | 180 | 270;
   watermarkRotation: 0 | 90 | 180 | 270;
