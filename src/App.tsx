@@ -59,8 +59,9 @@ const formatDuration = (seconds: number) => {
   return `${mm}:${String(ss).padStart(2, '0')}`;
 };
 
-const MULTITHREAD_PREF_KEY = 'ffmpeg.experimental.multithread.enabled';
-// v2: flags stored by the pre-r3 loader came from its own bugs (wrong core path, dual-input deadlock).
+// v2 keys: multi-thread is on by default now, and choices or flags stored by the pre-r3 loader
+// came from its own bugs (wrong core path, dual-input deadlock).
+const MULTITHREAD_PREF_KEY = 'ffmpeg.multithread.enabled.v2';
 const MULTITHREAD_DISABLED_KEY = 'ffmpeg.experimental.multithread.disabled.v2';
 const ENGINE_INIT_TIMEOUT_MS = 25000;
 
@@ -88,7 +89,7 @@ export default function App() {
   const [lastProcessingSeconds, setLastProcessingSeconds] = useState<number | null>(null);
   const [exportLogs, setExportLogs] = useState<string[]>([]);
   const [experimentalMultithreadEnabled, setExperimentalMultithreadEnabled] = useState<boolean>(() => {
-    return localStorage.getItem(MULTITHREAD_PREF_KEY) === '1';
+    return localStorage.getItem(MULTITHREAD_PREF_KEY) !== '0';
   });
   const [multithreadDisabled, setMultithreadDisabled] = useState<boolean>(() => {
     return localStorage.getItem(MULTITHREAD_DISABLED_KEY) === '1';
@@ -195,7 +196,8 @@ export default function App() {
         ffmpegModeRef.current = loadedMode;
         setFfmpegModeLabel(loadedMode);
         appendExportLog(`FFmpeg engine ready: ${loadedMode}`);
-        if (desiredMode === 'multi-thread' && loadedMode !== 'multi-thread') {
+        // Without cross-origin isolation the loader never tries mt, so that is no stability failure.
+        if (desiredMode === 'multi-thread' && loadedMode !== 'multi-thread' && window.crossOriginIsolated) {
           setMultithreadDisabled(true);
           localStorage.setItem(MULTITHREAD_DISABLED_KEY, '1');
         }
