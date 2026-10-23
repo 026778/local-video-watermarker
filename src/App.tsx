@@ -7,7 +7,13 @@ import { ControlPanel } from './components/ControlPanel';
 import { PreviewPanel } from './components/PreviewPanel';
 import { ExportPanel } from './components/ExportPanel';
 import { ExportQualityPreset, VideoInfo, WatermarkInfo, WatermarkSettings } from './types';
-import { FFmpegCoreMode, loadFFmpeg, getOverlayFilter } from './utils/ffmpegHelper';
+import {
+  FFmpegCoreMode,
+  WATERMARK_FILE_NAME,
+  getOverlayFilter,
+  getThreadArgs,
+  loadFFmpeg,
+} from './utils/ffmpegHelper';
 import { ShieldCheck } from 'lucide-react';
 import { EXPORT_PRESET_TEXT, TEXT } from './constants/text';
 
@@ -54,7 +60,8 @@ const formatDuration = (seconds: number) => {
 };
 
 const MULTITHREAD_PREF_KEY = 'ffmpeg.experimental.multithread.enabled';
-const MULTITHREAD_DISABLED_KEY = 'ffmpeg.experimental.multithread.disabled';
+// v2: flags stored by the pre-r3 loader came from its own bugs (wrong core path, dual-input deadlock).
+const MULTITHREAD_DISABLED_KEY = 'ffmpeg.experimental.multithread.disabled.v2';
 const ENGINE_INIT_TIMEOUT_MS = 25000;
 
 export default function App() {
@@ -137,11 +144,6 @@ export default function App() {
     };
     ffmpeg.on('log', listener);
     ffmpegLogListenerRef.current = listener;
-  };
-
-  const getOptimalThreadCount = () => {
-    const cpuCount = navigator.hardwareConcurrency ?? 4;
-    return String(Math.max(1, Math.min(8, cpuCount - 1)));
   };
 
   const teardownFFmpeg = () => {
@@ -284,7 +286,7 @@ export default function App() {
         appendExportLog(`Input files loaded: video=${videoData.byteLength}B, watermark=${watermarkData.byteLength}B`);
         await Promise.all([
           ffmpeg.writeFile('input.mp4', videoData),
-          ffmpeg.writeFile('watermark.png', watermarkData),
+          ffmpeg.writeFile(WATERMARK_FILE_NAME, watermarkData),
         ]);
         appendExportLog('Input files written into ffmpeg FS.');
 
@@ -293,19 +295,21 @@ export default function App() {
 
         const filter = getOverlayFilter(settings, video.width, video.height);
         const selectedPreset = EXPORT_PRESETS[qualityPreset];
-        const threadCount = getOptimalThreadCount();
+        const threadArgs = getThreadArgs(ffmpegModeRef.current);
         const execTimeoutMs = Math.max(120000, Math.round(video.duration * 8000));
 
         // Execute FFmpeg command
-        // -i input.mp4 -i watermark.png -filter_complex "[1:v]scale=...[wm];[0:v][wm]overlay=..." -c:a copy output.mp4
+        // -i input.mp4 -filter_complex "movie=watermark.png,scale=...[wm];[0:v][wm]overlay=..." -c:a copy output.mp4
+        // The watermark is read by the filter graph, so there is a single input file (see getOverlayFilter).
         const execArgs = [
+          ...threadArgs.input,
           '-i', 'input.mp4',
-          '-i', 'watermark.png',
+          ...threadArgs.filter,
           '-filter_complex', filter,
           '-c:v', 'libx264',
           '-preset', selectedPreset.ffmpegPreset,
           '-crf', selectedPreset.crf,
-          '-threads', threadCount,
+          ...threadArgs.encoder,
           '-pix_fmt', 'yuv420p',
           '-c:a', 'copy', // Copy audio without re-encoding
           'output.mp4'
@@ -372,7 +376,7 @@ export default function App() {
 
         await Promise.allSettled([
           ffmpeg.deleteFile('input.mp4'),
-          ffmpeg.deleteFile('watermark.png'),
+          ffmpeg.deleteFile(WATERMARK_FILE_NAME),
           ffmpeg.deleteFile('output.mp4'),
         ]);
 
